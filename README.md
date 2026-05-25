@@ -1,4 +1,6 @@
-# OAS Manual (VAW & TE)
+# OAS Manual 
+
+## (VINUM AW)
 
 USER DATA (T3.large / 20Gib)
 ```
@@ -86,11 +88,34 @@ spec:
     - port: 27017
       targetPort: 27017
 ```
-EXPONER BD A BE
+
+CREAR PORT-FORWARD.SERVICE
 ```
-kubectl port-forward --address 0.0.0.0 service/db-service 27017:27017 -n vinum-aw
+sudo nano /etc/systemd/system/db-portforward.service
 ```
 
+```
+[Unit]
+Description=Kubernetes MongoDB Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/db-service 27017:27017 -n vinum-aw
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable db-portforward && \
+sudo systemctl start db-portforward && \
+sudo systemctl status db-portforward
+```
 
 CREAR DEPLOYMENT PARA BE
 ```
@@ -152,11 +177,6 @@ spec:
                   key: CORS_ALLOWED_ORIGIN
 ```
 
-EXPONER BE 
-```
-kubectl port-forward --address 0.0.0.0 service/be-service 8088:8088 -n vinum-aw
-```
-
 CREAR SERVICE PARA BE
 ```
 apiVersion: v1
@@ -203,6 +223,33 @@ data:
   AES_SECRET: dmludW1hd3NlY3VyZWtleQ==
 ```
 
+CREAR PORT-FORWARD.SERVICE
+```
+sudo nano /etc/systemd/system/be-portforward.service
+```
+
+```
+[Unit]
+Description=Kubernetes MongoDB Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/be-service 8088:8088 -n vinum-aw
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable be-portforward && \
+sudo systemctl start be-portforward && \
+sudo systemctl status be-portforward
+```
 
 CREAR DEPLOYMENT PARA FE
 ```
@@ -265,10 +312,201 @@ data:
   API_IP_URL: http://cambiarporip:8088/v1/api
 ```
 
-EXPONER FE 
+CREAR PORT-FORWARD.SERVICE
 ```
-kubectl port-forward --address 0.0.0.0 service/fe-service 5300:5300 -n vinum-aw
+sudo nano /etc/systemd/system/fe-portforward.service
 ```
+
+```
+[Unit]
+Description=Kubernetes MongoDB Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/fe-service 5300:5300 -n vinum-aw
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable fe-portforward && \
+sudo systemctl start fe-portforward && \
+sudo systemctl status fe-portforward
+```
+---
+## (TOUR EX)
+
+CREAR DEPLOYMENT PARA BE - TOUREX
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tourex-be-deployment
+  namespace: vinum-aw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tourex-be
+  template:
+    metadata:
+      labels:
+        app: tourex-be
+    spec:
+      containers:
+        - name: tourex-be
+          image: gianmarcocastillof/tour-ex-be:1.0
+          ports:
+            - containerPort: 5000
+          env:
+            - name: MONGO_URI
+              value: "mongodb://IPPRIVADAMONGO:27017/"
+            - name: DB_NAME
+              value: "tour-ex_db"
+```
+
+CREAR SERVICE PARA BE - TOUREX
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: tourex-be-service
+  namespace: vinum-aw
+spec:
+  selector:
+    app: tourex-be
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30081
+  type: NodePort
+```
+
+CREAR PORT-FORWARD.SERVICE - BE - TOUREX
+```
+sudo nano /etc/systemd/system/be-portforward.service
+```
+
+```
+[Unit]
+Description=Kubernetes MongoDB Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/tourex-be-service 5000:5000  -n vinum-aw
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable be-portforward && \
+sudo systemctl start be-portforward && \
+sudo systemctl status be-portforward
+```
+
+CREAR DEPLOYMENT PARA FE - TOUREX
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tourex-fe-deployment
+  namespace: vinum-aw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tourex-fe
+  template:
+    metadata:
+      labels:
+        app: tourex-fe
+    spec:
+      containers:
+        - name: tourex-fe
+          image: gianmarcocastillof/tour-ex-fe:1.0
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: frontend-config-volume
+              mountPath: /usr/share/nginx/html/env.js
+              subPath: env.js
+      volumes:
+        - name: fe-config-volume
+          configMap:
+            name: tourism-fe-config
+```
+
+CREAR SERVICE PARA FE - TOUREX
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: tourex-fe-service
+  namespace: vinum-aw
+spec:
+  selector:
+    app: tourex-fe
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+  type: NodePort
+```
+
+CREAR CONFIG PARA FE - TOUREX
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tourex-fe-config
+data:
+  env.js: |
+    window._env_ = {
+      API_URL: "http://IPPUBLICABACKEND:5000/api"
+    };
+```
+
+CREAR PORT-FORWARD.SERVICE
+```
+sudo nano /etc/systemd/system/fe-portforward.service
+```
+
+```
+[Unit]
+Description=Kubernetes MongoDB Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/tourex-fe-service 30080:80 -n vinum-aw
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable fe-portforward && \
+sudo systemctl start fe-portforward && \
+sudo systemctl status fe-portforward
+```
+
+
 
 ---
 # EXTRAS
@@ -312,8 +550,18 @@ O también directamente:
 ```
 sudo pkill -f "kubectl port-forward"
 ```
-
-
+VER LOGS DEL PORT-FORWARD
+```
+journalctl -u backend-portforward -f
+```
+DETENER PORT-FORWARD
+```
+sudo systemctl stop backend-portforward
+```
+REINICIAR PORT-FORWARD
+```
+sudo systemctl restart backend-portforward
+```
 
 
 
