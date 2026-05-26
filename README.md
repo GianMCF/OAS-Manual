@@ -89,6 +89,12 @@ spec:
       targetPort: 27017
 ```
 
+EJECUTAR MANIFIESTOS Y CREAR RECURSOS
+```
+kubectl apply -f .
+```
+
+
 CREAR PORT-FORWARD.SERVICE
 ```
 sudo nano /etc/systemd/system/db-portforward.service
@@ -116,7 +122,7 @@ sudo systemctl enable db-portforward && \
 sudo systemctl start db-portforward && \
 sudo systemctl status db-portforward
 ```
-
+---
 CREAR DEPLOYMENT PARA BE
 ```
 apiVersion: apps/v1
@@ -223,6 +229,11 @@ data:
   AES_SECRET: dmludW1hd3NlY3VyZWtleQ==
 ```
 
+EJECUTAR MANIFIESTOS Y CREAR RECURSOS
+```
+kubectl apply -f .
+```
+
 CREAR PORT-FORWARD.SERVICE
 ```
 sudo nano /etc/systemd/system/be-portforward.service
@@ -250,7 +261,7 @@ sudo systemctl enable be-portforward && \
 sudo systemctl start be-portforward && \
 sudo systemctl status be-portforward
 ```
-
+---
 CREAR DEPLOYMENT PARA FE
 ```
 apiVersion: apps/v1
@@ -310,6 +321,11 @@ metadata:
 
 data:
   API_IP_URL: http://cambiarporip:8088/v1/api
+```
+
+EJECUTAR MANIFIESTOS Y CREAR RECURSOS
+```
+kubectl apply -f .
 ```
 
 CREAR PORT-FORWARD.SERVICE
@@ -388,6 +404,11 @@ spec:
   type: NodePort
 ```
 
+EJECUTAR MANIFIESTOS Y CREAR RECURSOS
+```
+kubectl apply -f .
+```
+
 CREAR PORT-FORWARD.SERVICE - BE - TOUREX
 ```
 sudo nano /etc/systemd/system/be-portforward.service
@@ -415,9 +436,10 @@ sudo systemctl enable be-portforward && \
 sudo systemctl start be-portforward && \
 sudo systemctl status be-portforward
 ```
-
+---
 CREAR DEPLOYMENT PARA FE - TOUREX
 ```
+apiVersion: app/v1
 kind: Deployment
 
 metadata:
@@ -468,17 +490,9 @@ spec:
   type: NodePort
 ```
 
-CREAR CONFIG PARA FE - TOUREX
+EJECUTAR MANIFIESTOS Y CREAR RECURSOS
 ```
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: tourex-fe-config
-data:
-  env.js: |
-    window._env_ = {
-      API_URL: "http://IPPUBLICABACKEND:5000/api"
-    };
+kubectl apply -f .
 ```
 
 CREAR PORT-FORWARD.SERVICE
@@ -493,7 +507,7 @@ After=network.target
 
 [Service]
 User=ubuntu
-ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/tourex-fe-service 30080:80 -n vinum-aw
+ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/tourex-fe-service 5200:5200 -n vinum-aw
 Restart=always
 RestartSec=5
 Environment=KUBECONFIG=/home/ubuntu/.kube/config
