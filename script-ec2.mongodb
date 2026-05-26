@@ -1,0 +1,197 @@
+use("vinum-aw-db")
+
+// ======================================================
+// LIMPIAR COLECCIONES
+// ======================================================
+
+db.client.deleteMany({})
+db.products.deleteMany({})
+db.payment_method.deleteMany({})
+db.employee.deleteMany({})
+db.sale.deleteMany({})
+
+// ======================================================
+// CLIENTES
+// ======================================================
+
+db.client.insertMany([
+  {
+    name: "Carlos",
+    surname: "Ramirez",
+    phoneNum: "987654321",
+    email: "carlos@gmail.com",
+    age: 30,
+    docType: "DNI",
+    docNum: "45678912",
+    status: true,
+    addedAt: ISODate()
+  },
+  {
+    name: "Lucia",
+    surname: "Fernandez",
+    phoneNum: "912345678",
+    email: "lucia@gmail.com",
+    age: 25,
+    docType: "DNI",
+    docNum: "78965412",
+    status: true,
+    addedAt: ISODate()
+  }
+])
+
+// ======================================================
+// EMPLEADOS
+// ======================================================
+
+db.employee.insertMany([
+  {
+    name: "Luis",
+    surname: "Garcia",
+    phoneNum: "945678901",
+    email: "luis@gmail.com",
+    age: 34,
+    docType: "DNI",
+    docNum: "74125896",
+    position: "Administrador",
+    salary: 2800,
+    status: true,
+    addedAt: ISODate()
+  },
+  {
+    name: "Ana",
+    surname: "Lopez",
+    phoneNum: "934567890",
+    email: "ana@gmail.com",
+    age: 28,
+    docType: "DNI",
+    docNum: "45612378",
+    position: "Vendedor",
+    salary: 1800,
+    status: true,
+    addedAt: ISODate()
+  }
+])
+
+// ======================================================
+// PRODUCTOS
+// ======================================================
+
+db.products.insertMany([
+  {
+    name: "Vino Tinto Reserva",
+    category: "Vino",
+    stock: 120,
+    unitPrice: NumberDecimal("65.50"),
+    volumeMl: 750,
+    alcoholPercentage: 13.5,
+    status: true,
+    addedAt: ISODate()
+  },
+  {
+    name: "Vino Rose Premium",
+    category: "Vino",
+    stock: 80,
+    unitPrice: NumberDecimal("55.00"),
+    volumeMl: 750,
+    alcoholPercentage: 12.5,
+    status: true,
+    addedAt: ISODate()
+  },
+  {
+    name: "Vino Blanco Seco",
+    category: "Vino",
+    stock: 60,
+    unitPrice: NumberDecimal("50.00"),
+    volumeMl: 750,
+    alcoholPercentage: 11.5,
+    status: true,
+    addedAt: ISODate()
+  }
+])
+
+// ======================================================
+// METODOS DE PAGO
+// ======================================================
+
+db.payment_method.insertMany([
+  {
+    name: "Efectivo",
+    description: "Pago en efectivo",
+    extraCharges: 0,
+    status: true,
+    addedAt: ISODate()
+  },
+  {
+    name: "Tarjeta",
+    description: "Pago con tarjeta",
+    extraCharges: 2.5,
+    status: true,
+    addedAt: ISODate()
+  },
+  {
+    name: "Yape",
+    description: "Billetera digital",
+    extraCharges: 0,
+    status: true,
+    addedAt: ISODate()
+  }
+])
+
+// ======================================================
+// REFERENCIAS
+// ======================================================
+
+const client = db.client.findOne({ docNum: "45678912" })
+const employee = db.employee.findOne({ docNum: "74125896" })
+const payment = db.payment_method.findOne({ name: "Efectivo" })
+const product = db.products.findOne({ name: "Vino Tinto Reserva" })
+
+// ======================================================
+// VENTAS
+// ======================================================
+
+db.sale.insertMany([
+  {
+    client: {
+      clientId: client._id,
+      name: client.name,
+      surname: client.surname
+    },
+
+    employee: {
+      employeeId: employee._id,
+      name: employee.name,
+      surname: employee.surname
+    },
+
+    paymentMethod: {
+      paymentMethodId: payment._id,
+      name: payment.name
+    },
+
+    saleDate: ISODate(),
+    status: true,
+
+    products: [
+      {
+        productId: product._id,
+        name: product.name,
+        quantity: 2,
+        unitPrice: product.unitPrice,
+        subtotal: NumberDecimal("131.00")
+      }
+    ],
+
+    total: NumberDecimal("131.00")
+  }
+])
+
+// ======================================================
+// VALIDACIÓN
+// ======================================================
+
+print("CLIENTES:", db.client.countDocuments())
+print("EMPLEADOS:", db.employee.countDocuments())
+print("PRODUCTOS:", db.products.countDocuments())
+print("METODOS:", db.payment_method.countDocuments())
+print("VENTAS:", db.sale.countDocuments())
