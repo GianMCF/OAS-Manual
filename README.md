@@ -205,7 +205,7 @@ metadata:
 data:
   MONGO_URI: mongodb://cambiarporiprivada:27017
   DB_NAME: vinum-aw-db
-  CORS_ALLOWED_ORIGIN: http://cambiarporip:5300
+  CORS_ALLOWED_ORIGIN: http://cambiarporip:5300,http://cambiarporiplocal:8081
 ```
 
 CREAR SECRET PARA BE
