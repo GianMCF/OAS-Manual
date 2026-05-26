@@ -363,6 +363,7 @@ PASOS PARA CONTINUAR CON LAS INSTANCIAS YA CREADAS PREVIAMENTE
 ```
 docker ps
 minikube status
+minikube start --driver=docker
 kubectl get pods -A
 sudo systemctl restart db-portforward
 ```
@@ -370,6 +371,7 @@ sudo systemctl restart db-portforward
 ```
 docker ps
 minikube status
+minikube start --driver=docker
 kubectl get pods -A
 sudo systemctl restart be-portforward
 ```
@@ -377,6 +379,7 @@ sudo systemctl restart be-portforward
 ```
 docker ps
 minikube status
+minikube start --driver=docker
 kubectl get pods -A
 sudo systemctl restart fe-portforward
 ```
