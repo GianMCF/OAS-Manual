@@ -418,34 +418,37 @@ sudo systemctl status be-portforward
 
 CREAR DEPLOYMENT PARA FE - TOUREX
 ```
-apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: tourex-fe-deployment
   namespace: vinum-aw
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: tourex-fe
+
   template:
     metadata:
       labels:
         app: tourex-fe
+
     spec:
       containers:
+
         - name: tourex-fe
-          image: gianmarcocastillof/tour-ex-fe:1.0
+          image: gianmarcocastillof/pii-fe:1.0
           ports:
-            - containerPort: 80
-          volumeMounts:
-            - name: frontend-config-volume
-              mountPath: /usr/share/nginx/html/env.js
-              subPath: env.js
-      volumes:
-        - name: fe-config-volume
-          configMap:
-            name: tourism-fe-config
+            - containerPort: 5200
+
+          env:
+
+            # URL backend PII
+            - name: API_URL
+              value: "http://32.193.69.242:5000/api"
 ```
 
 CREAR SERVICE PARA FE - TOUREX
