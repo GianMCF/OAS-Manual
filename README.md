@@ -49,6 +49,76 @@ CREAR NAMESPACE (ORDEN)
 kubectl create namespace vinum-aw
 ```
 
+
+
+CREAR DEPLOYMENT PARA DB
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-deployment
+  namespace: vinum-aw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: gianmarcocastillof/mongdb:6
+          ports:
+            - containerPort: 27017
+```
+
+CREAR SERVICE PARA DB
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-service
+  namespace: vinum-aw
+spec:
+  type: ClusterIP
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+```
+
+CREAR PORT-FORWARD.SERVICE
+```
+sudo nano /etc/systemd/system/db-portforward.service
+```
+
+```
+[Unit]
+Description=Kubernetes MongoDB Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/db-service 27017:27017 -n vinum-aw
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable db-portforward && \
+sudo systemctl start db-portforward && \
+sudo systemctl status db-portforward
+```
+
 ---
 CREAR DEPLOYMENT PARA BE
 ```
@@ -384,47 +454,6 @@ kubectl get pods -A
 sudo systemctl restart fe-portforward
 ```
 
-
-CREAR DEPLOYMENT PARA DB
-```
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: db-deployment
-  namespace: vinum-aw
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mongo
-  template:
-    metadata:
-      labels:
-        app: mongo
-    spec:
-      containers:
-        - name: mongo
-          image: gianmarcocastillof/mongdb:6
-          ports:
-            - containerPort: 27017
-```
-
-CREAR SERVICE PARA DB
-```
-apiVersion: v1
-kind: Service
-metadata:
-  name: db-service
-  namespace: vinum-aw
-spec:
-  type: ClusterIP
-  selector:
-    app: mongo
-  ports:
-    - port: 27017
-      targetPort: 27017
-```
-
 CREAR DEPLOYMENT PARA BE - TOUREX
 ```
 apiVersion: apps/v1
@@ -459,34 +488,6 @@ EJECUTAR MANIFIESTOS Y CREAR RECURSOS
 kubectl apply -f .
 ```
 
-
-CREAR PORT-FORWARD.SERVICE
-```
-sudo nano /etc/systemd/system/db-portforward.service
-```
-
-```
-[Unit]
-Description=Kubernetes MongoDB Port Forward
-After=network.target
-
-[Service]
-User=ubuntu
-ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/db-service 27017:27017 -n vinum-aw
-Restart=always
-RestartSec=5
-Environment=KUBECONFIG=/home/ubuntu/.kube/config
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```
-sudo systemctl daemon-reload && \
-sudo systemctl enable db-portforward && \
-sudo systemctl start db-portforward && \
-sudo systemctl status db-portforward
-```
 
 CREAR SERVICE PARA BE - TOUREX
 ```
