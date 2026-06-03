@@ -206,9 +206,9 @@ metadata:
   namespace: vinum-aw
 
 data:
-  MONGO_URI: mongodb://172.31.92.216:27017
+  MONGO_URI: mongodb://ip:27017
   DB_NAME: vinum-aw-db
-  CORS_ALLOWED_ORIGIN: http://cambiarporip:5300,http://localhost:8081,http://127.0.0.1:8081
+  CORS_ALLOWED_ORIGIN: http://ip:5300,http://localhost:8081
 ```
 
 CREAR SECRET PARA BE
@@ -317,7 +317,7 @@ metadata:
   namespace: vinum-aw
 
 data:
-  API_IP_URL: http://cambiarporip:8088/v1/api
+  API_IP_URL: http://ip:8088/v1/api
 ```
 
 EJECUTAR MANIFIESTOS Y CREAR RECURSOS
