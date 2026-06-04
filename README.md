@@ -359,12 +359,12 @@ sudo systemctl status fe-portforward
 
 OBTENER VALOR DE VARIABLES EN POD
 ```
-kubectl exec -it be-deployment-cambiaporcodigoreal -n vinum-aw -- printenv | grep MONGO
+kubectl exec -it be-deployment-c -n vinum-aw -- printenv | grep MONGO
 ```
 
 EJECUTAR POD Y ACCEDER A TERMINAL
 ```
-kubectl exec -it db-deployment-cambiaporcodigoreal -n vinum-aw -- bash
+kubectl exec -it db-deployment-c -n vinum-aw -- bash
 ```
 
 EJECUTAR MONGOSH PARA REALIZAR CONSULTAS EN BD
@@ -372,9 +372,14 @@ EJECUTAR MONGOSH PARA REALIZAR CONSULTAS EN BD
 mongosh
 ```
 
-USAR BD PARA EJECUTAR SCRIPT O CONSULTAS ESPECÍFICAS
+EJECUTAR MONGOSH PARA REALIZAR CONSULTAS EN BD
 ```
 use vinum-aw-db
+```
+
+MOSTRAR BASES DE DATOS
+```
+show dbs
 ```
 
 ---
@@ -478,7 +483,7 @@ spec:
             - containerPort: 5000
           env:
             - name: MONGO_URI
-              value: "mongodb://172.31.92.216:27017/"
+              value: "mongodb://ip:27017/"
             - name: DB_NAME
               value: "tour-ex_db"
 ```
