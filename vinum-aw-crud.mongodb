@@ -1,0 +1,330 @@
+// ======================================================
+// OPERACIONES CRUD - PRODUCTS
+// ======================================================
+
+// CREATE
+db.products.insertOne({
+  name: "Vino Edicion Especial",
+  category: "Vino",
+  stock: 40,
+  unitPrice: NumberDecimal("95.00"),
+  volumeMl: 750,
+  alcoholPercentage: 15.0,
+  status: true,
+  addedAt: ISODate()
+})
+
+// READ
+db.products.find()
+
+db.products.find({
+  name: "Vino Tinto Reserva"
+})
+
+db.products.find({
+  stock: { $gt: 50 }
+})
+
+// UPDATE
+db.products.updateOne(
+  { name: "Vino Blanco Seco" },
+  {
+    $set: {
+      updatedAt: ISODate()
+    },
+    $inc: {
+      stock: 20
+    }
+  }
+)
+
+
+db.client.updateOne(
+  { name: "Alberto" },
+  {
+    $set: {
+      deletedAt: ISODate(),
+      status: false
+
+    }
+  }
+)
+
+
+// DELETE
+db.products.deleteOne({
+  name: "Vino Edicion Especial"
+})
+
+// ======================================================
+// CONSULTAS
+// ======================================================
+
+// Productos activos
+db.products.find(
+  { status: true },
+  { name: 1, unitPrice: 1, stock: 1 }
+).sort({ name: 1 })
+
+// Cliente por DNI
+db.client.find(
+  { docNum: "12345678" },
+  { name: 1, surname: 1 }
+)
+
+// Ventas por fecha
+db.sale.find({
+  saleDate: {
+    $gte: ISODate("2026-01-01")
+  }
+}).sort({
+  saleDate: -1
+})
+
+// ======================================================
+// AGREGACIONES
+// ======================================================
+
+// Productos más vendidos
+db.sale.aggregate([
+  { $unwind: "$products" },
+
+  {
+    $group: {
+      _id: "$products.name",
+      totalVendidos: {
+        $sum: "$products.quantity"
+      }
+    }
+  },
+
+  {
+    $sort: {
+      totalVendidos: -1
+    }
+  }
+])
+
+// Ventas por empleado
+db.sale.aggregate([
+  {
+    $group: {
+      _id: "$employee.name",
+      totalVentas: {
+        $sum: "$total"
+      },
+      cantidadVentas: {
+        $sum: 1
+      }
+    }
+  },
+
+  {
+    $sort: {
+      totalVentas: -1
+    }
+  }
+])
+
+// Ingresos por día
+db.sale.aggregate([
+  {
+    $group: {
+      _id: {
+        year: { $year: "$saleDate" },
+        month: { $month: "$saleDate" },
+        day: { $dayOfMonth: "$saleDate" }
+      },
+
+      totalIngresos: {
+        $sum: "$total"
+      }
+    }
+  },
+
+  {
+    $sort: {
+      "_id.year": 1,
+      "_id.month": 1,
+      "_id.day": 1
+    }
+  }
+])
+
+// ======================================================
+// ÍNDICES
+// ======================================================
+
+// Índice para búsqueda rápida de clientes por documento
+db.client.createIndex({
+  docNum: 1
+})
+
+// Índice para filtrado de productos activos
+db.products.createIndex({
+  status: 1
+})
+
+// Índice para ordenamiento y búsquedas por fecha
+db.sale.createIndex({
+  saleDate: -1
+})
+
+// Índice multikey para productos dentro de ventas
+db.sale.createIndex({
+  "products.productId": 1
+})
+
+// ======================================================
+// EXPLAIN PLAN
+// ======================================================
+
+db.client.find({
+  docNum: "45678912"
+}).explain("executionStats")
+
+
+use("vinum-aw-db");
+
+
+// 1. Verificar stock antes de la transacción
+print("===== STOCK ANTES DE LA TRANSACCIÓN =====");
+
+
+db.products.find(
+  { name: "Tacama Blanco Moscatel Colección" },
+  { name: 1, stock: 1, unitPrice: 1, status: 1 }
+);
+
+
+// 2. Iniciar sesión
+const session = db.getMongo().startSession();
+const database = session.getDatabase("vinum-aw-db");
+
+
+try {
+  // 3. Iniciar transacción
+  session.startTransaction();
+
+
+  print("===== TRANSACCIÓN INICIADA =====");
+
+
+  // 4. Buscar producto maestro
+  const producto = database.products.findOne({
+    name: "Tacama Blanco Moscatel Colección",
+    status: true
+  });
+
+
+  if (!producto) {
+    throw new Error("Producto no encontrado o inactivo");
+  }
+
+
+  // 5. Validar stock
+  const cantidadVendida = 2;
+
+
+  if (producto.stock < cantidadVendida) {
+    throw new Error("Stock insuficiente");
+  }
+
+
+  // 6. Registrar venta en colección transaccional
+  database.sale.insertOne({
+    client: {
+      _id: ObjectId("6a26c93ae75166be4484f71b"),
+      name: "Carlos",
+      surname: "Ramirez Torres",
+      docType: "DNI",
+      docNum: "45678912"
+    },
+
+
+    employee: {
+      _id: ObjectId("6a26c03ff7d11b7a449df935"),
+      name: "Luis",
+      surname: "Garcia Ruiz",
+      position: "Vendedor"
+    },
+
+
+    paymentMethod: {
+      _id: ObjectId("6a26bf25f7d11b7a449df8b7"),
+      name: "Efectivo",
+      extraCharges: 0
+    },
+
+
+    saleDate: ISODate(),
+    status: true,
+
+
+    products: [
+      {
+        productId: producto._id,
+        name: producto.name,
+        quantity: cantidadVendida,
+        unitPrice: producto.unitPrice,
+        subtotal: producto.unitPrice * cantidadVendida
+      }
+    ],
+
+
+    total: producto.unitPrice * cantidadVendida
+  });
+
+  print("Venta registrada correctamente.");
+
+
+  // 7. Descontar stock del producto maestro
+  database.products.updateOne(
+    { _id: producto._id },
+    {
+      $inc: { stock: -cantidadVendida },
+      $set: { updatedAt: ISODate() }
+    }
+  );
+
+
+  print("Stock actualizado correctamente.");
+
+
+  // 8. Confirmar transacción
+  session.commitTransaction();
+
+
+  print("✅ COMMIT REALIZADO: La venta y el descuento de stock fueron guardados.");
+
+
+} catch (error) {
+  // 9. Cancelar transacción si ocurre un error
+  session.abortTransaction();
+
+
+  print("❌ ABORT REALIZADO: La transacción fue cancelada.");
+  print("Motivo: " + error.message);
+
+
+} finally {
+  // 10. Cerrar sesión
+  session.endSession();
+}
+
+
+// 11. Verificar stock después de la transacción
+print("===== STOCK DESPUÉS DE LA TRANSACCIÓN =====");
+
+
+db.products.find(
+  { name: "Tacama Blanco Moscatel Colección" },
+  { name: 1, stock: 1, unitPrice: 1, status: 1 }
+);
+
+
+// 12. Verificar última venta registrada
+print("===== ÚLTIMA VENTA REGISTRADA =====");
+
+
+db.sale.find().sort({ saleDate: -1 }).limit(1);
