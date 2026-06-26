@@ -49,8 +49,6 @@ CREAR NAMESPACE (ORDEN)
 kubectl create namespace vinum-aw
 ```
 
-
-
 CREAR DEPLOYMENT PARA DB
 
 ```
@@ -128,9 +126,109 @@ sudo systemctl enable db-portforward && \
 sudo systemctl start db-portforward && \
 sudo systemctl status db-portforward
 ```
+---
+
+CREAR NAMESPACE (ORDEN)
+```
+kubectl create namespace monitoring || true
+```
+
+NODE-EXPORTER-DEPLOYMENT-DB
+
+```
+nano mongodb-exporter.yaml
+```
+
+```
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: mongodb-exporter
+  namespace: monitoring
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb-exporter
+
+  template:
+    metadata:
+      labels:
+        app: mongodb-exporter
+
+    spec:
+      containers:
+      - name: mongodb-exporter
+        image: percona/mongodb_exporter:0.40
+
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://db-service.vinum-aw.svc.cluster.local:27017"
+```
+
+NODE-EXPORTER-SERVICE-DB
+
+```
+nano mongodb-exporter-service.yaml
+```
+
+```
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: mongodb-exporter
+  namespace: monitoring
+
+spec:
+  type: NodePort
+  selector:
+    app: mongodb-exporter
+
+  ports:
+  - port: 9216
+    targetPort: 9216
+    nodePort: 30921
+```
+
+EJECUTAR MANIFIESTOS Y CREAR RECURSOS
+```
+kubectl apply -f .
+```
+
+CREAR 2DO PORT-FORWARD.SERVICE 
+```
+sudo nano /etc/systemd/system/db-node-portforward.service
+```
+
+```
+[Unit]
+Description=Kubernetes MongoDB Node Exporter Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward svc/mongodb-exporter -n monitoring 30921:9216 --address 0.0.0.0
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable db-node-portforward && \
+sudo systemctl start db-node-portforward && \
+sudo systemctl status db-node-portforward
+```
+
 
 ---
-CREAR DEPLOYMENT PARA BE
+CREAR DEPLOYMENT PARA BACKEND
 
 ```
 nano be-deploy.yml
@@ -288,8 +386,121 @@ sudo systemctl enable be-portforward && \
 sudo systemctl start be-portforward && \
 sudo systemctl status be-portforward
 ```
+
 ---
-CREAR DEPLOYMENT PARA FE
+
+CREAR NAMESPACE (ORDEN)
+```
+kubectl create namespace monitoring || true
+```
+
+NODE-EXPORTER-DEPLOYMENT-BE
+
+```
+nano node-exporter.yaml
+```
+
+```
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: node-exporter
+  namespace: monitoring
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-exporter
+
+  template:
+
+    metadata:
+      labels:
+        app: node-exporter
+
+    spec:
+      hostNetwork: true
+      hostPID: true
+
+      containers:
+      - name: node-exporter
+        image: prom/node-exporter:v1.8.2
+
+        args:
+        - --path.rootfs=/host
+        volumeMounts:
+        - name: root
+          mountPath: /host
+          readOnly: true
+
+      volumes:
+      - name: root
+        hostPath:
+          path: /
+```
+
+NODE-EXPORTER-SERVICE-BE
+
+```
+nano node-exporter-service.yaml
+```
+
+```
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: node-exporter
+  namespace: monitoring
+
+spec:
+  type: NodePort
+  selector:
+    app: node-exporter
+
+  ports:
+  - port: 9101
+    targetPort: 9101
+    nodePort: 30911
+```
+
+EJECUTAR MANIFIESTOS Y CREAR RECURSOS
+```
+kubectl apply -f .
+```
+
+CREAR 2DO PORT-FORWARD.SERVICE 
+```
+sudo nano /etc/systemd/system/be-node-portforward.service
+```
+
+```
+[Unit]
+Description=Kubernetes Backend Node Exporter Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward svc/node-exporter -n monitoring 30911:9101 --address 0.0.0.0
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable be-node-portforward && \
+sudo systemctl start be-node-portforward && \
+sudo systemctl status be-node-portforward
+```
+
+---
+CREAR DEPLOYMENT PARA FRONTEND
 
 ```
 nano fe-deploy.yml
@@ -398,6 +609,265 @@ sudo systemctl start fe-portforward && \
 sudo systemctl status fe-portforward
 ```
 
+---
+
+CREAR NAMESPACE (ORDEN)
+```
+kubectl create namespace monitoring || true
+```
+
+NODE-EXPORTER-DEPLOYMENT-FE
+
+```
+nano node-exporter.yaml
+```
+
+```
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: node-exporter
+  namespace: monitoring
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-exporter
+
+  template:
+
+    metadata:
+      labels:
+        app: node-exporter
+
+    spec:
+      hostNetwork: true
+      hostPID: true
+
+      containers:
+      - name: node-exporter
+        image: prom/node-exporter:v1.8.2
+
+        args:
+        - --path.rootfs=/host
+        volumeMounts:
+        - name: root
+          mountPath: /host
+          readOnly: true
+
+      volumes:
+      - name: root
+        hostPath:
+          path: /
+```
+
+NODE-EXPORTER-SERVICE-FE
+
+```
+nano node-exporter-service.yaml
+```
+
+```
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: node-exporter
+  namespace: monitoring
+
+spec:
+  type: NodePort
+  selector:
+    app: node-exporter
+
+  ports:
+  - port: 9100
+    targetPort: 9100
+    nodePort: 30910
+```
+
+EJECUTAR MANIFIESTOS Y CREAR RECURSOS
+```
+kubectl apply -f .
+```
+
+CREAR 2DO PORT-FORWARD.SERVICE 
+```
+sudo nano /etc/systemd/system/fe-node-portforward.service
+```
+
+```
+[Unit]
+Description=Kubernetes Frontend Node Exporter Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward svc/node-exporter -n monitoring 30910:9100 --address 0.0.0.0
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable fe-node-portforward && \
+sudo systemctl start fe-node-portforward && \
+sudo systemctl status fe-node-portforward
+```
+
+
+---
+PROCESO DE MONITOREO
+
+
+
+MODIFICAR VALORES DE PROMETHEUS
+```
+nano prometheus-values.yaml
+```
+
+```
+serverFiles:
+  prometheus.yml:
+    scrape_configs:
+
+      - job_name: "frontend-node"
+        static_configs:
+          - targets: ["IP:30910"]
+
+      - job_name: "backend-node"
+        static_configs:
+          - targets: ["IP:30911"]
+
+      - job_name: "backend-app"
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["IP:8088"]
+
+      - job_name: "mongodb"
+        static_configs:
+          - targets: ["IP:30921"]
+```
+
+OVERRIDE A HELM
+```
+helm upgrade prometheus prometheus-community/prometheus \
+-n monitoring -f prometheus-values.yaml
+```
+
+```
+kubectl rollout restart deployment prometheus-server -n monitoring
+```
+
+MODIFICAR CONFIGMAP
+
+```
+kubectl get configmap prometheus-server -n monitoring -o yaml > prom.yaml
+```
+
+```
+  - job_name: "frontend"
+    static_configs:
+      - targets: ["IP:30002"]
+
+  - job_name: "backend"
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["IP:8088"]
+
+  - job_name: "mongodb"
+    static_configs:
+      - targets: ["IP:27017"]
+
+  - job_name: "frontend-node"
+    static_configs:
+      - targets: ["IP:30910"]
+
+  - job_name: "backend-node"
+    static_configs:
+      - targets: ["IP:30911"]
+
+  - job_name: "mongo-node"
+    static_configs:
+      - targets: ["IP:30921"]
+```
+
+APLICAR CAMBIOS
+```
+kubectl apply -f prom.yaml
+```
+
+REINICIAR
+```
+kubectl rollout restart deployment prometheus-server -n monitoring
+```
+---
+GRAFANA
+
+CREAR PORT-FORWARD.SERVICE
+```
+sudo nano /etc/systemd/system/grafana-portforward.service
+```
+
+```
+[Unit]
+Description=Grafana Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward svc/grafana -n monitoring 3000:80 --address 0.0.0.0
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable grafana-portforward && \
+sudo systemctl start grafana-portforward && \
+sudo systemctl status grafana-portforward
+```
+
+---
+PROMETHEUS
+
+CREAR PORT-FORWARD.SERVICE
+```
+sudo nano /etc/systemd/system/prometheus-portforward.service
+```
+
+```
+[Unit]
+Description=Prometheus Port Forward
+After=network.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/local/bin/kubectl port-forward svc/prometheus-server -n monitoring 9090:80 --address 0.0.0.0
+Restart=always
+RestartSec=5
+Environment=KUBECONFIG=/home/ubuntu/.kube/config
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```
+sudo systemctl daemon-reload && \
+sudo systemctl enable prometheus-portforward && \
+sudo systemctl start prometheus-portforward && \
+sudo systemctl status prometheus-portforward
+```
 
 ---
 # EXTRAS
