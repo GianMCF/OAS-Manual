@@ -461,8 +461,8 @@ spec:
     app: node-exporter
 
   ports:
-  - port: 9101
-    targetPort: 9101
+  - port: 9100
+    targetPort: 9100
     nodePort: 30911
 ```
 
@@ -483,7 +483,7 @@ After=network.target
 
 [Service]
 User=ubuntu
-ExecStart=/usr/local/bin/kubectl port-forward svc/node-exporter -n monitoring 30911:9101 --address 0.0.0.0
+ExecStart=/usr/local/bin/kubectl port-forward svc/node-exporter -n monitoring 30911:9100 --address 0.0.0.0
 Restart=always
 RestartSec=5
 Environment=KUBECONFIG=/home/ubuntu/.kube/config
