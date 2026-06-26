@@ -52,6 +52,11 @@ kubectl create namespace vinum-aw
 
 
 CREAR DEPLOYMENT PARA DB
+
+```
+nano db-deploy.yml
+```
+
 ```
 apiVersion: apps/v1
 kind: Deployment
@@ -76,6 +81,11 @@ spec:
 ```
 
 CREAR SERVICE PARA DB
+
+```
+nano db-svc.yml
+```
+
 ```
 apiVersion: v1
 kind: Service
@@ -121,6 +131,11 @@ sudo systemctl status db-portforward
 
 ---
 CREAR DEPLOYMENT PARA BE
+
+```
+nano be-deploy.yml
+```
+
 ```
 apiVersion: apps/v1
 kind: Deployment
@@ -181,6 +196,11 @@ spec:
 ```
 
 CREAR SERVICE PARA BE
+
+```
+nano be-svc.yml
+```
+
 ```
 apiVersion: v1
 kind: Service
@@ -198,6 +218,11 @@ spec:
 ```
 
 CREAR CONFIG PARA BE
+
+```
+nano config.yml
+```
+
 ```
 apiVersion: v1
 kind: ConfigMap
@@ -212,6 +237,11 @@ data:
 ```
 
 CREAR SECRET PARA BE
+
+```
+nano secret.yml
+```
+
 ```
 apiVersion: v1
 kind: Secret
@@ -260,6 +290,11 @@ sudo systemctl status be-portforward
 ```
 ---
 CREAR DEPLOYMENT PARA FE
+
+```
+nano fe-deploy.yml
+```
+
 ```
 apiVersion: apps/v1
 kind: Deployment
@@ -292,6 +327,11 @@ spec:
 ```
 
 CREAR SERVICE PARA FE
+
+```
+nano fe-svc.yml
+```
+
 ```
 apiVersion: v1
 kind: Service
@@ -309,6 +349,11 @@ spec:
 ```
 
 CREAR CONFIG PARA FE
+
+```
+nano config.yml
+```
+
 ```
 apiVersion: v1
 kind: ConfigMap
