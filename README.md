@@ -49,7 +49,7 @@ CREAR NAMESPACE (ORDEN)
 kubectl create namespace vinum-aw
 ```
 
-CREAR DEPLOYMENT PARA DB
+CREAR DEPLOYMENT PARA DATABASE
 
 ```
 nano db-deploy.yml
@@ -78,7 +78,7 @@ spec:
             - containerPort: 27017
 ```
 
-CREAR SERVICE PARA DB
+CREAR SERVICE PARA DATABASE
 
 ```
 nano db-svc.yml
@@ -723,9 +723,128 @@ sudo systemctl status fe-node-portforward
 
 
 ---
-PROCESO DE MONITOREO
+# PROCESO DE MONITOREO
+
+```
+nano install-monitoring.sh
+```
 
 
+```
+#!/bin/bash
+
+set -e
+
+echo "== Instalando Helm =="
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+echo "== Verificando Helm =="
+helm version
+
+echo "== Agregando repositorio Prometheus =="
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+echo "== Creando namespace monitoring =="
+kubectl create namespace monitoring || true
+
+echo "== Instalando Prometheus =="
+helm install prometheus prometheus-community/prometheus -n monitoring || true
+
+echo "== Instalando Grafana =="
+helm install grafana prometheus-community/grafana -n monitoring || true
+
+echo "== Verificación final =="
+kubectl get pods -n monitoring
+kubectl get svc -n monitoring
+helm list -n monitoring
+```
+
+```
+chmod +x install-monitoring.sh
+```
+
+```
+./install-monitoring.sh
+```
+### CONFIGRAR GRAFANA
+
+```
+nano setup-grafana.sh
+```
+
+```
+#!/bin/bash
+
+set -e
+
+NAMESPACE="monitoring"
+
+echo "=== Obteniendo contraseña de Grafana (admin) ==="
+
+GRAFANA_PASSWORD=$(kubectl get secret --namespace $NAMESPACE grafana -o jsonpath="{.data.admin-password}" | base64 --decode)
+
+echo "Password Grafana: $GRAFANA_PASSWORD"
+
+echo "=== Obteniendo servicio Grafana ==="
+
+GRAFANA_SERVICE=$(kubectl get svc -n $NAMESPACE grafana -o jsonpath="{.spec.clusterIP}")
+
+echo "Grafana ClusterIP: $GRAFANA_SERVICE"
+
+echo "=== Port-forward para acceso local ==="
+echo "Accede en: http://localhost:3000"
+
+kubectl port-forward svc/grafana -n $NAMESPACE 3000:80 &
+PF_PID=$!
+
+sleep 5
+
+echo "=== Configurando datasource Prometheus ==="
+
+curl -X POST http://admin:$GRAFANA_PASSWORD@localhost:3000/api/datasources \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Prometheus",
+    "type": "prometheus",
+    "url": "http://prometheus-server.monitoring.svc.cluster.local",
+    "access": "proxy",
+    "isDefault": true
+}'
+
+echo "=== Importando dashboards básicos ==="
+
+# Node Exporter Full Dashboard (ID oficial 1860)
+curl -X POST http://admin:$GRAFANA_PASSWORD@localhost:3000/api/dashboards/db \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dashboard": {
+      "id": null,
+      "uid": "node-exporter",
+      "title": "Node Exporter Full",
+      "timezone": "browser",
+      "schemaVersion": 37,
+      "version": 1,
+      "panels": []
+    },
+    "overwrite": true
+}'
+
+echo "=== Finalizado ==="
+echo "Usuario: admin"
+echo "Password: $GRAFANA_PASSWORD"
+echo "URL: http://localhost:3000"
+
+wait $PF_PID
+```
+
+```
+chmod +x setup-grafana.sh
+```
+
+```
+./setup-grafana.sh
+```
 
 MODIFICAR VALORES DE PROMETHEUS
 ```
