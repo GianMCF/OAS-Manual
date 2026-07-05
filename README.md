@@ -892,7 +892,7 @@ sudo ./setup-frontend.sh
 ```
 
 ---
-
+## CREACIÓN MANUAL
 
 CREAR NAMESPACE (ORDEN)
 ```
