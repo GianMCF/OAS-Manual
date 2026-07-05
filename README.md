@@ -49,6 +49,9 @@ CREAR NAMESPACE (ORDEN)
 kubectl create namespace vinum-aw
 ```
 
+---
+## DATABASE
+
 CREAR DEPLOYMENT PARA DATABASE
 
 ```
@@ -228,6 +231,9 @@ sudo systemctl status db-node-portforward
 
 
 ---
+
+## BACKEND
+
 CREAR DEPLOYMENT PARA BACKEND
 
 ```
@@ -500,6 +506,9 @@ sudo systemctl status be-node-portforward
 ```
 
 ---
+
+## FRONTEND
+
 CREAR DEPLOYMENT PARA FRONTEND
 
 ```
