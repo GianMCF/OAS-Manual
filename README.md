@@ -47,11 +47,11 @@ echo "==== FIN USER DATA ===="
 ## CREAR TODO CON SCRIPTS
 
 CREAR
-´´´
+```
 nano setup-database.sh
-´´´
+```
 
-´´´
+```
 #!/bin/bash
 
 set -e
@@ -264,20 +264,20 @@ echo
 echo "=========================================="
 echo " CONFIGURACIÓN FINALIZADA CORRECTAMENTE "
 echo "=========================================="
-´´´
+```
 
 EJECUTAR
-´´´
+```
 sudo ./setup-database.sh
-´´´
+```
 
 
 CREAR PARA BE
-´´´
+```
 nano setup-backend.sh
-´´´
+```
 
-´´´
+```
 #!/bin/bash
 
 set -e
@@ -601,20 +601,20 @@ echo
 echo "======================================="
 echo " BACKEND CONFIGURADO CORRECTAMENTE"
 echo "======================================="
-´´´
+```
 
 EJECUTAR
-´´´
+```
 sudo ./setup-backend.sh
-´´´
+```
 
 
 CREAR PARA FRONTEND
-´´´
+```
 nano setup-frontend.sh
-´´´
+```
 
-´´´
+```
 #!/bin/bash
 
 set -e
@@ -884,12 +884,12 @@ echo
 echo "========================================"
 echo " FRONTEND CONFIGURADO CORRECTAMENTE"
 echo "========================================"
-´´´
+```
 
 EJECUTAR
-´´´
+```
 sudo ./setup-frontend.sh
-´´´
+```
 
 ---
 
