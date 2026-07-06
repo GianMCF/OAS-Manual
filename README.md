@@ -46,6 +46,8 @@ echo "==== FIN USER DATA ===="
 ---
 ## CREAR TODO CON SCRIPTS
 
+mongodb://localhost:27017/?directConnection=true
+
 ### CREAR PARA DATABASE
 ```
 nano setup-database.sh
