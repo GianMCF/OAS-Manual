@@ -268,7 +268,7 @@ echo "=========================================="
 
 EJECUTAR
 ```
-sudo ./setup-database.sh
+chmod +x setup-database.sh && ./setup-database.sh
 ```
 
 
@@ -605,7 +605,7 @@ echo "======================================="
 
 EJECUTAR
 ```
-sudo ./setup-backend.sh
+chmod +x setup-backend.sh && ./setup-backend.sh
 ```
 
 
@@ -888,7 +888,7 @@ echo "========================================"
 
 EJECUTAR
 ```
-sudo ./setup-frontend.sh
+chmod +x setup-frontend.sh && ./setup-frontend.sh
 ```
 
 ---
