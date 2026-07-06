@@ -94,6 +94,15 @@ spec:
       containers:
       - name: mongo
         image: gianmarcocastillof/mongdb:6
+
+        command:
+        - mongod
+
+        args:
+        - --bind_ip_all
+        - --replSet
+        - rs0
+
         ports:
         - containerPort: 27017
 EOF
