@@ -139,7 +139,7 @@ spec:
   template:
     metadata:
       labels:
-        app:mongodb-exporter
+        app: mongodb-exporter
     spec:
       containers:
       - name: mongodb-exporter
