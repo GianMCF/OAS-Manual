@@ -54,7 +54,7 @@ try {
 
   const product =
     database.products.findOne({
-      name: "Vino Tinto Reserva 2",
+      name: "Vino Tinto Reserva",
       status: true
     })
 
@@ -78,7 +78,7 @@ try {
     throw new Error("Producto no encontrado")
   }
 
-  const quantity = 200
+  const quantity = 2
 
   if(product.stock < quantity){
     throw new Error("Stock insuficiente")
