@@ -1314,7 +1314,7 @@ minikube start --driver=docker
 ```
 
 ---
-# EXTRAS
+##  EXTRAS
 
 ESTABLECER LA CONFIGURACIÓN PARA EL RESPLICASET DE MONGODB
 ```
