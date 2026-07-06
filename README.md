@@ -324,9 +324,9 @@ metadata:
   namespace: vinum-aw
 
 data:
-  MONGO_URI: mongodb://${DB_IP}:27017
-  DB_NAME: ${DB_NAME}
-  CORS_ALLOWED_ORIGIN: ${FRONTEND_IP}
+  MONGO_URI: "mongodb://${DB_IP}:27017"
+  DB_NAME: "${DB_NAME}"
+  CORS_ALLOWED_ORIGIN: "${FRONTEND_IP}"
 EOF
 
 ##############################################
