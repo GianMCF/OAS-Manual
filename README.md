@@ -1232,7 +1232,3 @@ REINICIAR EL DEPLOYMENT (USAR SI SE CAMBIAN ATRIBUTOS RELACIONADOS)
 ```
 kubectl rollout restart deployment fe-deployment -n vinum-aw
 ```
-sudo systemctl enable fe-portforward && \
-sudo systemctl start fe-portforward && \
-sudo systemctl status fe-portforward
-```
