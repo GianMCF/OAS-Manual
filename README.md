@@ -654,7 +654,7 @@ metadata:
   namespace: vinum-aw
 
 data:
-  API_IP_URL: http://${BACKEND_IP}:8088/v1/api
+  VITE_API_URL: http://${BACKEND_IP}:8088/v1/api
 EOF
 
 ##############################################
@@ -694,11 +694,11 @@ spec:
         - containerPort: 5300
 
         env:
-        - name: API_IP_URL
+        - name: VITE_API_URL
           valueFrom:
             configMapKeyRef:
               name: vinum-config
-              key: API_IP_URL
+              key: VITE_API_URL
 EOF
 
 ##############################################
