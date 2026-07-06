@@ -306,7 +306,7 @@ echo "=========================================="
 ##############################################
 # Namespace Monitoring
 ##############################################
-
+kubectl create namespace vinum-aw --dry-run=client -o yaml | kubectl apply -f -
 kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
 
 ##############################################
