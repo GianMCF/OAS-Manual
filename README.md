@@ -46,7 +46,7 @@ echo "==== FIN USER DATA ===="
 ---
 ## CREAR TODO CON SCRIPTS
 
-CREAR
+### CREAR PARA DATABASE
 ```
 nano setup-database.sh
 ```
@@ -272,7 +272,7 @@ chmod +x setup-database.sh && ./setup-database.sh
 ```
 
 
-CREAR PARA BE
+### CREAR PARA BE
 ```
 nano setup-backend.sh
 ```
@@ -304,7 +304,7 @@ echo " CONFIGURANDO BACKEND VINUM "
 echo "=========================================="
 
 ##############################################
-# Namespace Monitoring
+# Namespaces
 ##############################################
 kubectl create namespace vinum-aw --dry-run=client -o yaml | kubectl apply -f -
 kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
@@ -609,7 +609,7 @@ chmod +x setup-backend.sh && ./setup-backend.sh
 ```
 
 
-CREAR PARA FRONTEND
+### CREAR PARA FRONTEND
 ```
 nano setup-frontend.sh
 ```
@@ -635,11 +635,10 @@ echo " CONFIGURANDO FRONTEND VINUM "
 echo "=========================================="
 
 ##############################################
-# Namespace Monitoring
+# Namespaces
 ##############################################
-
+kubectl create namespace vinum-aw --dry-run=client -o yaml | kubectl apply -f -
 kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
-
 ##############################################
 # ConfigMap
 ##############################################
