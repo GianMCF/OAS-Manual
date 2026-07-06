@@ -1175,7 +1175,7 @@ kubectl exec -it be-deployment-c -n vinum-aw -- printenv | grep MONGO
 
 EJECUTAR POD Y ACCEDER A TERMINAL
 ```
-kubectl exec -it db-deployment-c -n vinum-aw -- bash
+kubectl exec -it db-deployment-c -n vinum-aw -- mongosh
 ```
 
 EJECUTAR MONGOSH PARA REALIZAR CONSULTAS EN BD
