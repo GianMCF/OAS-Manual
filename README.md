@@ -905,195 +905,405 @@ chmod +x setup-frontend.sh && ./setup-frontend.sh
 # PROCESO DE MONITOREO
 
 ```
-nano install-monitoring.sh
-```
-
-
-```
-#!/bin/bash
-
-set -e
-
-echo "== Instalando Helm =="
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-echo "== Verificando Helm =="
-helm version
-
-echo "== Agregando repositorio Prometheus =="
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-echo "== Creando namespace monitoring =="
-kubectl create namespace monitoring || true
-
-echo "== Instalando Prometheus =="
-helm install prometheus prometheus-community/prometheus -n monitoring || true
-
-echo "== Instalando Grafana =="
-helm install grafana prometheus-community/grafana -n monitoring || true
-
-echo "== Verificación final =="
-kubectl get pods -n monitoring
-kubectl get svc -n monitoring
-helm list -n monitoring
-```
-
-```
-chmod +x install-monitoring.sh
-```
-
-```
-./install-monitoring.sh
-```
-### CONFIGRAR GRAFANA
-
-```
-nano setup-grafana.sh
+nano setup-monitoring.sh
 ```
 
 ```
 #!/bin/bash
+set -euo pipefail
 
-set -e
+# =========================================================
+# VINUM AW - MONITORING AUTO SETUP (CLEAN VERSION)
+# =========================================================
+
+########################
+# CONFIGURACIÓN
+########################
+
+FRONTEND_IP=":30910"
+BACKEND_IP=":30911"
+BACKEND_APP_IP=":8088"
+MONGODB_IP=":30921"
 
 NAMESPACE="monitoring"
 
-echo "=== Obteniendo contraseña de Grafana (admin) ==="
+########################
+# LOG
+########################
 
-GRAFANA_PASSWORD=$(kubectl get secret --namespace $NAMESPACE grafana -o jsonpath="{.data.admin-password}" | base64 --decode)
+log() { echo -e "\n[MONITORING] $1"; }
 
-echo "Password Grafana: $GRAFANA_PASSWORD"
+########################
+# HELM INSTALL
+########################
 
-echo "=== Obteniendo servicio Grafana ==="
+install_helm() {
+  if ! command -v helm &>/dev/null; then
+    log "Instalando Helm..."
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  fi
+}
 
-GRAFANA_SERVICE=$(kubectl get svc -n $NAMESPACE grafana -o jsonpath="{.spec.clusterIP}")
+install_dependencies() {
 
-echo "Grafana ClusterIP: $GRAFANA_SERVICE"
+    if ! command -v jq &>/dev/null; then
+        log "Instalando jq..."
+        sudo apt-get update
+        sudo apt-get install -y jq
+    fi
 
-echo "=== Port-forward para acceso local ==="
-echo "Accede en: http://localhost:3000"
+}
 
-kubectl port-forward svc/grafana -n $NAMESPACE 3000:80 &
-PF_PID=$!
+########################
+# PROMETHEUS + GRAFANA
+########################
+
+install_stack() {
+
+    log "Instalando Prometheus y Grafana..."
+
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+    helm repo add grafana https://grafana.github.io/helm-charts || true
+
+    helm repo update
+
+    kubectl create namespace "$NAMESPACE" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+    helm upgrade --install prometheus \
+        prometheus-community/prometheus \
+        -n "$NAMESPACE"
+
+    helm upgrade --install grafana \
+        grafana/grafana \
+        -n "$NAMESPACE"
+
+    log "Esperando despliegues..."
+
+    kubectl rollout status deployment/prometheus-server \
+        -n "$NAMESPACE" --timeout=300s
+
+    kubectl rollout status deployment/grafana \
+        -n "$NAMESPACE" --timeout=300s
+}
+
+########################
+# PROMETHEUS CONFIG
+########################
+
+create_prometheus_config() {
+
+    log "Configurando Prometheus..."
+
+    CONFIGMAP=$(kubectl get configmap -n "$NAMESPACE" \
+        -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+        | grep prometheus-server | head -n1)
+
+    if [ -z "$CONFIGMAP" ]; then
+        echo "No se encontró la ConfigMap de Prometheus."
+        exit 1
+    fi
+
+    kubectl get configmap "$CONFIGMAP" \
+        -n "$NAMESPACE" \
+        -o json \
+    | jq '
+        .data["prometheus.yml"] =
+"global:
+  scrape_interval: 15s
+
+scrape_configs:
+
+- job_name: frontend-node
+  static_configs:
+  - targets: [\"'"$FRONTEND_IP"'\"]
+
+- job_name: backend-node
+  static_configs:
+  - targets: [\"'"$BACKEND_IP"'\"]
+
+- job_name: backend-app
+  metrics_path: /actuator/prometheus
+  static_configs:
+  - targets: [\"'"$BACKEND_APP_IP"'\"]
+
+- job_name: database
+  static_configs:
+  - targets: [\"'"$MONGODB_IP"'\"]"
+    ' \
+    | kubectl apply -f -
+}
+
+########################
+# ALERTAS
+########################
+
+create_alerts() {
+log "Creando alertas..."
+
+kubectl apply -n $NAMESPACE -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+data:
+  alerts.yml: |
+    groups:
+      - name: system-alerts
+        rules:
+          - alert: BackendDown
+            expr: up{job="backend-app"} == 0
+            for: 1m
+            labels:
+              severity: critical
+
+          - alert: MongoDown
+            expr: up{job="database"} == 0
+            for: 1m
+            labels:
+              severity: critical
+
+          - alert: HighCPU
+            expr: 100 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100 > 80
+            for: 2m
+            labels:
+              severity: warning
+EOF
+}
+
+########################
+# RESTART PROMETHEUS
+########################
+
+restart_prometheus() {
+
+    log "Reiniciando Prometheus..."
+
+    kubectl rollout restart deployment/prometheus-server \
+        -n "$NAMESPACE"
+
+    kubectl rollout status deployment/prometheus-server \
+        -n "$NAMESPACE" \
+        --timeout=300s
+
+    sleep 10
+}
+
+########################
+# GRAFANA DATASOURCE
+########################
+
+configure_grafana() {
+
+    log "Configurando datasource..."
+
+    kubectl rollout status deployment/grafana \
+        -n "$NAMESPACE" \
+        --timeout=300s
+
+    GRAFANA_POD=$(kubectl get pods \
+        -n "$NAMESPACE" \
+        -l app.kubernetes.io/name=grafana \
+        -o jsonpath='{.items[0].metadata.name}')
+
+    PASSWORD=$(kubectl get secret \
+        -n "$NAMESPACE" grafana \
+        -o jsonpath='{.data.admin-password}' | base64 --decode)
+
+    HTTP_CODE=$(kubectl exec -n "$NAMESPACE" "$GRAFANA_POD" -- sh -c "
+curl -s \
+-o /dev/null \
+-w '%{http_code}' \
+-X POST \
+http://admin:$PASSWORD@localhost:3000/api/datasources \
+-H 'Content-Type: application/json' \
+-d '{
+\"name\":\"Prometheus\",
+\"type\":\"prometheus\",
+\"url\":\"http://prometheus-server.monitoring.svc.cluster.local\",
+\"access\":\"proxy\",
+\"isDefault\":true
+}'
+")
+
+    case "$HTTP_CODE" in
+        200|201)
+            log "Datasource creado."
+            ;;
+        409)
+            log "Datasource existente."
+            ;;
+        *)
+            echo "Error creando datasource (HTTP $HTTP_CODE)"
+            exit 1
+            ;;
+    esac
+}
+
+import_dashboard() {
+
+    log "Importando Dashboard..."
+
+    GRAFANA_POD=$(kubectl get pods \
+        -n "$NAMESPACE" \
+        -l app.kubernetes.io/name=grafana \
+        -o jsonpath='{.items[0].metadata.name}')
+
+    PASSWORD=$(kubectl get secret \
+        -n "$NAMESPACE" grafana \
+        -o jsonpath='{.data.admin-password}' | base64 --decode)
+
+    TMP=$(mktemp)
+
+    cp dashboard.json "$TMP"
+
+    jq '
+    walk(
+      if type=="object"
+         and has("datasource")
+         and (.datasource|type)=="object"
+         and .datasource.type=="prometheus"
+      then
+         .datasource.uid="${DS_PROMETHEUS}"
+      else
+         .
+      end
+    )
+    |
+    .__inputs=[
+      {
+        "name":"DS_PROMETHEUS",
+        "label":"Prometheus",
+        "type":"datasource",
+        "pluginId":"prometheus",
+        "pluginName":"Prometheus"
+      }
+    ]
+    |
+    del(.id)
+    ' "$TMP" > "${TMP}.new"
+
+    mv "${TMP}.new" "$TMP"
+
+    kubectl cp "$TMP" \
+        "$NAMESPACE/$GRAFANA_POD:/tmp/dashboard.json"
+
+    rm "$TMP"
+
+    RESULT=$(kubectl exec -n "$NAMESPACE" "$GRAFANA_POD" -- sh -c "
+curl -s \
+-X POST \
+http://admin:$PASSWORD@localhost:3000/api/dashboards/import \
+-H 'Content-Type: application/json' \
+-d '{
+\"dashboard\": '\"\$(cat /tmp/dashboard.json)\"',
+\"overwrite\": true,
+\"inputs\":[
+{
+\"name\":\"DS_PROMETHEUS\",
+\"type\":\"datasource\",
+\"pluginId\":\"prometheus\",
+\"value\":\"Prometheus\"
+}
+]
+}'
+")
+
+    if echo "$RESULT" | jq -e '.imported == true' >/dev/null; then
+        log "Dashboard importado correctamente."
+    else
+        echo "No fue posible importar el dashboard."
+        echo "$RESULT"
+        exit 1
+    fi
+
+    log "Dashboard importado correctamente."
+}
+
+create_portforward_services() {
+
+log "Creando servicios permanentes de Port-Forward..."
+
+sudo tee /etc/systemd/system/prometheus-portforward.service >/dev/null <<EOF
+[Unit]
+Description=Prometheus Port Forward
+After=network.target
+
+[Service]
+User=$USER
+Environment=KUBECONFIG=/home/$USER/.kube/config
+ExecStart=/usr/local/bin/kubectl port-forward svc/prometheus-server -n $NAMESPACE 9090:80 --address 0.0.0.0
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo tee /etc/systemd/system/grafana-portforward.service >/dev/null <<EOF
+[Unit]
+Description=Grafana Port Forward
+After=network.target
+
+[Service]
+User=$USER
+Environment=KUBECONFIG=/home/$USER/.kube/config
+ExecStart=/usr/local/bin/kubectl port-forward svc/grafana -n $NAMESPACE 3000:80 --address 0.0.0.0
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+
+sudo systemctl enable prometheus-portforward
+sudo systemctl enable grafana-portforward
+
+sudo systemctl restart prometheus-portforward
+sudo systemctl restart grafana-portforward
 
 sleep 5
 
-echo "=== Configurando datasource Prometheus ==="
+sudo systemctl --no-pager --full status prometheus-portforward || true
+sudo systemctl --no-pager --full status grafana-portforward || true
 
-curl -X POST http://admin:$GRAFANA_PASSWORD@localhost:3000/api/datasources \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Prometheus",
-    "type": "prometheus",
-    "url": "http://prometheus-server.monitoring.svc.cluster.local",
-    "access": "proxy",
-    "isDefault": true
-}'
+}
 
-echo "=== Importando dashboards básicos ==="
+########################
+# EXEC
+########################
 
-# Node Exporter Full Dashboard (ID oficial 1860)
-curl -X POST http://admin:$GRAFANA_PASSWORD@localhost:3000/api/dashboards/db \
-  -H "Content-Type: application/json" \
-  -d '{
-    "dashboard": {
-      "id": null,
-      "uid": "node-exporter",
-      "title": "Node Exporter Full",
-      "timezone": "browser",
-      "schemaVersion": 37,
-      "version": 1,
-      "panels": []
-    },
-    "overwrite": true
-}'
+install_helm
+install_dependencies
+install_stack
+create_prometheus_config
+create_alerts
+restart_prometheus
+configure_grafana
+import_dashboard
+create_portforward_services
 
-echo "=== Finalizado ==="
-echo "Usuario: admin"
-echo "Password: $GRAFANA_PASSWORD"
-echo "URL: http://localhost:3000"
+log "LISTO: Monitoreo operativo"
 
-wait $PF_PID
+PUBLIC_IP=$(curl -s ifconfig.me)
+
+echo
+echo "========================================"
+echo " MONITOREO CONFIGURADO"
+echo "========================================"
+echo "Grafana:"
+echo "http://$PUBLIC_IP:3000"
+echo
+echo "Prometheus:"
+echo "http://$PUBLIC_IP:9090"
+echo
+echo "Usuario Grafana: admin"
+echo "Password: $(kubectl get secret --namespace monitoring grafana -o jsonpath='{.data.admin-password}' | base64 --decode)"
+echo "========================================"
 ```
-
-```
-chmod +x setup-grafana.sh
-```
-
-```
-./setup-grafana.sh
-```
-
-MODIFICAR VALORES DE PROMETHEUS
-```
-nano prometheus-values.yaml
-```
-
-```
-serverFiles:
-  prometheus.yml:
-    scrape_configs:
-
-      - job_name: "frontend-node"
-        static_configs:
-          - targets: ["IP:30910"]
-
-      - job_name: "backend-node"
-        static_configs:
-          - targets: ["IP:30911"]
-
-      - job_name: "backend-app"
-        metrics_path: /actuator/prometheus
-        static_configs:
-          - targets: ["IP:8088"]
-
-      - job_name: "mongodb"
-        static_configs:
-          - targets: ["IP:30921"]
-```
-
-OVERRIDE A HELM
-```
-helm upgrade prometheus prometheus-community/prometheus \
--n monitoring -f prometheus-values.yaml
-```
-
-```
-kubectl rollout restart deployment prometheus-server -n monitoring
-```
-
-MODIFICAR CONFIGMAP
-
-```
-kubectl get configmap prometheus-server -n monitoring -o yaml > prom.yaml
-```
-
-```
-  - job_name: "frontend"
-    static_configs:
-      - targets: ["IP:30002"]
-
-  - job_name: "backend"
-    metrics_path: /actuator/prometheus
-    static_configs:
-      - targets: ["IP:8088"]
-
-  - job_name: "mongodb"
-    static_configs:
-      - targets: ["IP:27017"]
-
-  - job_name: "frontend-node"
-    static_configs:
-      - targets: ["IP:30910"]
-
-  - job_name: "backend-node"
-    static_configs:
-      - targets: ["IP:30911"]
-
-  - job_name: "mongo-node"
-    static_configs:
-      - targets: ["IP:30921"]
+chmod +x setup-monitoring.sh && ./setup-monitoring.sh
 ```
 
 APLICAR CAMBIOS
