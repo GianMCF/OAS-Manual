@@ -4,11 +4,12 @@ use("vinum-aw-db")
 // LIMPIAR COLECCIONES
 // ======================================================
 
-db.client.deleteMany({})
-db.products.deleteMany({})
-db.payment_method.deleteMany({})
-db.employee.deleteMany({})
-db.sale.deleteMany({})
+db.client.drop()
+db.products.drop()
+db.payment_method.drop()
+db.employee.drop()
+db.sale.drop()
+db.purchases.drop()
 
 // ======================================================
 // CLIENTES
