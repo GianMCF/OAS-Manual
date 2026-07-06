@@ -45,9 +45,9 @@ echo "==== FIN USER DATA ===="
 ```
 ---
 ## CREAR TODO CON SCRIPTS
-
+```
 mongodb://localhost:27017/?directConnection=true
-
+```
 ### CREAR PARA DATABASE
 ```
 nano setup-database.sh
@@ -1303,82 +1303,31 @@ echo "Usuario Grafana: admin"
 echo "Password: $(kubectl get secret --namespace monitoring grafana -o jsonpath='{.data.admin-password}' | base64 --decode)"
 echo "========================================"
 ```
+
+```
 chmod +x setup-monitoring.sh && ./setup-monitoring.sh
 ```
 
-APLICAR CAMBIOS
+POR SI SE PAGA LA INSTANCIA
 ```
-kubectl apply -f prom.yaml
-```
-
-REINICIAR
-```
-kubectl rollout restart deployment prometheus-server -n monitoring
-```
----
-GRAFANA
-
-CREAR PORT-FORWARD.SERVICE
-```
-sudo nano /etc/systemd/system/grafana-portforward.service
-```
-
-```
-[Unit]
-Description=Grafana Port Forward
-After=network.target
-
-[Service]
-User=ubuntu
-ExecStart=/usr/local/bin/kubectl port-forward svc/grafana -n monitoring 3000:80 --address 0.0.0.0
-Restart=always
-RestartSec=5
-Environment=KUBECONFIG=/home/ubuntu/.kube/config
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```
-sudo systemctl daemon-reload && \
-sudo systemctl enable grafana-portforward && \
-sudo systemctl start grafana-portforward && \
-sudo systemctl status grafana-portforward
-```
-
----
-PROMETHEUS
-
-CREAR PORT-FORWARD.SERVICE
-```
-sudo nano /etc/systemd/system/prometheus-portforward.service
-```
-
-```
-[Unit]
-Description=Prometheus Port Forward
-After=network.target
-
-[Service]
-User=ubuntu
-ExecStart=/usr/local/bin/kubectl port-forward svc/prometheus-server -n monitoring 9090:80 --address 0.0.0.0
-Restart=always
-RestartSec=5
-Environment=KUBECONFIG=/home/ubuntu/.kube/config
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```
-sudo systemctl daemon-reload && \
-sudo systemctl enable prometheus-portforward && \
-sudo systemctl start prometheus-portforward && \
-sudo systemctl status prometheus-portforward
+minikube start --driver=docker
 ```
 
 ---
 # EXTRAS
+
+ESTABLECER LA CONFIGURACIÓN PARA EL RESPLICASET DE MONGODB
+```
+rs.initiate({
+    _id: "rs0",
+    members: [
+        {
+            _id: 0,
+            host: "db-service.vinum-aw.svc.cluster.local:27017"
+        }
+    ]
+})
+```
 
 OBTENER VALOR DE VARIABLES EN POD
 ```
@@ -1390,12 +1339,7 @@ EJECUTAR POD Y ACCEDER A TERMINAL
 kubectl exec -it db-deployment-c -n vinum-aw -- mongosh
 ```
 
-EJECUTAR MONGOSH PARA REALIZAR CONSULTAS EN BD
-```
-mongosh
-```
-
-EJECUTAR MONGOSH PARA REALIZAR CONSULTAS EN BD
+CREAR y/o USAR LA BD
 ```
 use vinum-aw-db
 ```
