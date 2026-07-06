@@ -1338,6 +1338,10 @@ EJECUTAR POD Y ACCEDER A TERMINAL
 ```
 kubectl exec -it db-deployment-c -n vinum-aw -- mongosh
 ```
+LISTAR POR X
+```
+db.client.find({name: ''})
+```
 
 CREAR y/o USAR LA BD
 ```
